@@ -1,0 +1,10 @@
+[package]
+name = "squishy_lib"
+version = "0.1.0"
+edition = "2024"
+license = ""
+authors = ["Tadeusz Pawlonka <tadeuszpawlonka@gmail.com>"]
+
+
+[dependencies]
+bevy = "0.15.0"
