@@ -30,25 +30,7 @@ fn setup_character(
     //     Sleeping::disabled(),
     //     Ccd::enabled(),
     // )).id();
-    //
-    // let joint = SpringJointBuilder::new(1.0, 1.0, 1.0)
-    //     .local_anchor1(Vec3::new(0.0, 0.0, 0.0))
-    //     .local_anchor2(Vec3::new(0.0, 0.0, 0.0));
-    //
-    // let test2 = commands.spawn((
-    //     RigidBody::Dynamic,
-    //     Mesh3d(meshes.add(Sphere::new(0.2))),
-    //     MeshMaterial3d(materials.add(Color::Srgba(BLUE))),
-    //     Collider::ball(0.2),
-    //     Transform::from_xyz(1.0, 5.0, 0.0),
-    //     ColliderMassProperties::Mass(10.0),
-    //     Friction::coefficient(1.0),
-    //     Restitution::coefficient(0.5),
-    //     Sleeping::disabled(),
-    //     Ccd::enabled(),
-    //     ImpulseJoint::new(test, joint),
-    // )).id();
-    // let z_offset = 10.0_f32;
+
     let y_offset = 5.0_f32;
     let scale = 0.1_f32;
 
@@ -66,6 +48,7 @@ fn setup_character(
     ));
 
     let coords = vec![
+        (0.0, -1.0 + y_offset, -std::f32::consts::PHI),
         (0.0, 1.0 + y_offset, -std::f32::consts::PHI),
         (0.0, 1.0 + y_offset, std::f32::consts::PHI),
         (0.0, -1.0 + y_offset, std::f32::consts::PHI),
@@ -85,7 +68,7 @@ fn setup_character(
         vertex2.push(Vec::new());
     }
 
-    for coord in coords {
+    for coord in &coords {
         let id = commands.spawn(test(coord.0, coord.1, coord.2)).id();
         for i in 0..12 {
             let idx = commands.spawn(test2(coord.0, coord.1, coord.2)).id();
@@ -98,58 +81,45 @@ fn setup_character(
         vertex.push(id);
     }
 
+    const DIM: usize = 3;
+    for i in 0..12 {
+        for j in 0..12 {
+            if i == j {continue;}
+            let len = distance_euclid::<DIM>(&[coords[i].0, coords[i].1, coords[i].2], &[coords[j].0, coords[j].1, coords[j].2]);
+            println!("{:?} | {:?} | {:?}", i, j, len);
+            let joint = SpringJointBuilder::new(len, 10.0, 1.0)
+                        .local_anchor1(Vec3::new(0.0, 0.0, 0.0))
+                        .local_anchor2(Vec3::new(0.0, 0.0, 0.0));
+            commands.entity(vertex2[i][j]).insert(ImpulseJoint::new(vertex[i], joint));
+        }
+    }
+}
 
-    // vertex.push(commands.spawn(test(0.0, -1.0 + y_offset, -std::f32::consts::PHI)).id());
-    // for i in 0..12 {
-    //     let id = commands.spawn(test2(0.0, -1.0 + y_offset, -std::f32::consts::PHI)).id();
-    //     let joint = FixedJointBuilder::new()
-    //         .local_anchor1(Vec3::new(0.0, 0.0, 0.0))
-    //         .local_anchor2(Vec3::new(0.0, 0.0, 0.0));
-    //     commands.entity(id).insert(MultibodyJoint::new(vertex[0], TypedJoint::from(joint)));
-    //     vertex2[i].push(id);
-    // }
-
-
-    // for i in 0..12 {
-    //     let vert = vertex[i];
-    //     println!("vert {:?}", i);
-    //     for j in 0..12 {
-    //         if i == j { continue; }
-    //         let vert2 = vertex[j];
-    //         println!("vert2 {:?}", j);
-    //         let joint = SpringJointBuilder::new(1.0, 100.0, 1000.0)
-    //             .local_anchor1(Vec3::new(0.0, 0.0, 0.0))
-    //             .local_anchor2(Vec3::new(0.0, 0.0, 0.0));
-    //         commands.entity(vert).insert(ImpulseJoint::new(vert2, joint));
-    //     }
-    // }
-
-    // for vert in &vertex {
-    //     for vert2 in &vertex {
-    //         if *vert == *vert2 { continue; }
-    //         let joint = SpringJointBuilder::new(1.0, 1.0, 1.0)
-    //             .local_anchor1(Vec3::new(0.0, 0.0, 0.0))
-    //             .local_anchor2(Vec3::new(0.0, 0.0, 0.0));
-    //         // vert.insert(ImpulseJoint::new(*vert2, joint))
-    //         commands.entity(*vert).insert(ImpulseJoint::new(*vert2, joint));
-    //     }
-    // }
+pub fn distance_euclid<const SIZE: usize>(f1: &[f32; SIZE], f2: &[f32; SIZE]) -> f32 {
+    let mut result: f32 = 0.0;
+    for i in 0..f1.len() {
+        result += (f1[i] - f2[i]).powi(2);
+    }
+    result.powi(-2)
 }
 
 fn test(x: f32, y: f32, z: f32) -> impl Bundle {
+    let group = Group::GROUP_1;
     (
         RigidBody::Dynamic,
         Collider::ball(0.2),
         Transform::from_xyz(x, y, z),
-        ColliderMassProperties::Mass(10.0),
-        Friction::coefficient(1.0),
-        Restitution::coefficient(0.5),
+        ColliderMassProperties::Mass(1.0),
+        Friction::coefficient(0.0),
+        Restitution::coefficient(0.0),
         Sleeping::disabled(),
         Ccd::enabled(),
+        CollisionGroups::new(group, !group),
     )
 }
 
 fn test2(x: f32, y: f32, z: f32) -> impl Bundle {
+    let group = Group::GROUP_1;
     (
         RigidBody::Dynamic,
         Collider::ball(0.1),
@@ -159,6 +129,7 @@ fn test2(x: f32, y: f32, z: f32) -> impl Bundle {
         Restitution::coefficient(0.5),
         Sleeping::disabled(),
         Ccd::enabled(),
+        CollisionGroups::new(group, !group),
     )
 }
 
