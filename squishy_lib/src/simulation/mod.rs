@@ -3,6 +3,7 @@ use bevy::color::palettes::basic::{BLUE, GRAY, YELLOW};
 use bevy::math::vec3;
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
+use bevy_rapier3d::rapier::prelude::DebugRenderObject::MultibodyJoint;
 
 pub struct SimulationPlugin;
 
@@ -48,54 +49,43 @@ fn setup_character(
     ));
 
     let coords = vec![
-        (0.0, -1.0 + y_offset, -std::f32::consts::PHI),
-        (0.0, 1.0 + y_offset, -std::f32::consts::PHI),
-        (0.0, 1.0 + y_offset, std::f32::consts::PHI),
-        (0.0, -1.0 + y_offset, std::f32::consts::PHI),
-        (-1.0, -std::f32::consts::PHI + y_offset, 0.0),
-        (1.0, -std::f32::consts::PHI + y_offset, 0.0),
-        (1.0, std::f32::consts::PHI + y_offset, 0.0),
-        (-1.0, std::f32::consts::PHI + y_offset, 0.0),
-        (-std::f32::consts::PHI, 0.0 + y_offset, -1.0),
-        (std::f32::consts::PHI, 0.0 + y_offset, -1.0),
-        (std::f32::consts::PHI, 0.0 + y_offset, 1.0),
-        (-std::f32::consts::PHI, 0.0 + y_offset, 1.0),
+        [0.0, -1.0 + y_offset, -std::f32::consts::PHI],
+        [0.0, 1.0 + y_offset, -std::f32::consts::PHI],
+        [0.0, 1.0 + y_offset, std::f32::consts::PHI],
+        [0.0, -1.0 + y_offset, std::f32::consts::PHI],
+        [-1.0, -std::f32::consts::PHI + y_offset, 0.0],
+        [1.0, -std::f32::consts::PHI + y_offset, 0.0],
+        [1.0, std::f32::consts::PHI + y_offset, 0.0],
+        [-1.0, std::f32::consts::PHI + y_offset, 0.0],
+        [-std::f32::consts::PHI, 0.0 + y_offset, -1.0],
+        [std::f32::consts::PHI, 0.0 + y_offset, -1.0],
+        [std::f32::consts::PHI, 0.0 + y_offset, 1.0],
+        [-std::f32::consts::PHI, 0.0 + y_offset, 1.0],
     ];
 
     let mut vertex = Vec::new();
-    let mut vertex2 = Vec::<Vec<Entity>>::new();
-    for i in 0..12 {
-        vertex2.push(Vec::new());
-    }
+
 
     for coord in &coords {
-        let id = commands.spawn(test(coord.0, coord.1, coord.2)).id();
-        for i in 0..12 {
-            let idx = commands.spawn(test2(coord.0, coord.1, coord.2)).id();
-            let joint = FixedJointBuilder::new()
-                .local_anchor1(Vec3::new(0.0, 0.0, 0.0))
-                .local_anchor2(Vec3::new(0.0, 0.0, 0.0));
-            commands.entity(idx).insert(MultibodyJoint::new(id, TypedJoint::from(joint)));
-            vertex2[i].push(idx);
-        }
+        let id = commands.spawn(test(coord[0], coord[1], coord[2])).id();
         vertex.push(id);
     }
 
-    const DIM: usize = 3;
-    for i in 0..12 {
-        for j in 0..12 {
-            if i == j {continue;}
-            let len = distance_euclid::<DIM>(&[coords[i].0, coords[i].1, coords[i].2], &[coords[j].0, coords[j].1, coords[j].2]);
-            println!("{:?} | {:?} | {:?}", i, j, len);
-            let joint = SpringJointBuilder::new(len, 10.0, 1.0)
-                        .local_anchor1(Vec3::new(0.0, 0.0, 0.0))
-                        .local_anchor2(Vec3::new(0.0, 0.0, 0.0));
-            commands.entity(vertex2[i][j]).insert(ImpulseJoint::new(vertex[i], joint));
+    for i in 0..vertex.len() {
+        let vert = vertex[i];
+        for j in 0..coords.len() {
+            if j == i {continue;}
+            let dist = distance_euclid(&coords[i][..], &coords[j][..]);
+            let joint = SpringJointBuilder::new(dist*100.0, 20.0, 10.0);
+            let id = commands.spawn((
+                ImpulseJoint::new(vertex[j], joint),
+                )).id();
+            commands.entity(vert).add_child(id);
         }
     }
 }
 
-pub fn distance_euclid<const SIZE: usize>(f1: &[f32; SIZE], f2: &[f32; SIZE]) -> f32 {
+pub fn distance_euclid(f1: &[f32], f2: &[f32]) -> f32 {
     let mut result: f32 = 0.0;
     for i in 0..f1.len() {
         result += (f1[i] - f2[i]).powi(2);
@@ -104,22 +94,19 @@ pub fn distance_euclid<const SIZE: usize>(f1: &[f32; SIZE], f2: &[f32; SIZE]) ->
 }
 
 fn test(x: f32, y: f32, z: f32) -> impl Bundle {
-    let group = Group::GROUP_1;
     (
         RigidBody::Dynamic,
         Collider::ball(0.2),
         Transform::from_xyz(x, y, z),
         ColliderMassProperties::Mass(1.0),
-        Friction::coefficient(0.0),
-        Restitution::coefficient(0.0),
+        Friction::coefficient(1000.0),
+        Restitution::coefficient(0.5),
         Sleeping::disabled(),
         Ccd::enabled(),
-        CollisionGroups::new(group, !group),
     )
 }
 
 fn test2(x: f32, y: f32, z: f32) -> impl Bundle {
-    let group = Group::GROUP_1;
     (
         RigidBody::Dynamic,
         Collider::ball(0.1),
@@ -129,7 +116,6 @@ fn test2(x: f32, y: f32, z: f32) -> impl Bundle {
         Restitution::coefficient(0.5),
         Sleeping::disabled(),
         Ccd::enabled(),
-        CollisionGroups::new(group, !group),
     )
 }
 
