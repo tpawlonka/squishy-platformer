@@ -112,20 +112,14 @@ fn tile_unit_sphere_coords<'a>(fractions: u32, incl_scale: u32, azim_scale: u32)
     result.push([1.0, std::f32::consts::PI, 0.0]);
     for i in 1..incl_step {
         let inclination = i as f32 * angle_incl;
-        if i <= incl_step/2 {
-            md += 2*azim_scale;
-            angle_az =  2.0 * std::f32::consts::PI / (fractions+md) as f32;
-            for j in 0..fractions+md {
-                let azimuth = j as f32 * angle_az;
-                result.push([radius, inclination, azimuth]);
-            }
-        } else {
-            md -= 2*azim_scale;
-            angle_az =  2.0 * std::f32::consts::PI / (fractions+md) as f32;
-            for j in 0..fractions+md {
-                let azimuth = j as f32 * angle_az;
-                result.push([radius, inclination, azimuth]);
-            }
+        match i <= incl_step/2 {
+            true => {md += 2*azim_scale}
+            false => {md -= 2*azim_scale}
+        };
+        angle_az =  2.0 * std::f32::consts::PI / (fractions+md) as f32;
+        for j in 0..fractions+md {
+            let azimuth = j as f32 * angle_az;
+            result.push([radius, inclination, azimuth]);
         }
     }
     result
