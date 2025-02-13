@@ -11,7 +11,7 @@ impl Plugin for RenderPlugin {
             .add_plugins(PanOrbitCameraPlugin)
             .add_plugins(InfiniteGridPlugin)
             .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
-            .add_plugins(RapierDebugRenderPlugin::default())
+            // .add_plugins(RapierDebugRenderPlugin::default())
             .add_systems(Startup, setup_rendering);
     }
 }
